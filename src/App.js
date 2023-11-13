@@ -1,59 +1,186 @@
-import React from "react";
+import React, { Component } from "react";
 import "./App.css";
-import { useState } from "react";
 import Input from "./Component/Input";
 import Button from "./Component/Button";
 import Switcher from "./Component/Switcher";
 import Todoitem from "./Component/Todoitem";
+import Clear from "./Component/clear";
 
+class App extends Component {
+  constructor(props) {
+    super(props);
 
-function App() {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [Todos, setTodos] = useState([]);
+    const date = new Date();
 
-  const addTask = () => {
-    console.log("Добавление задачи");
-    console.log("title:", title);
-    console.log("description:", description);
-  
-    if (title.trim() !== "") {
-      const newTask = { title, description };
-      setTodos([...Todos, newTask]);
-      setTitle("");
-      setDescription("");
-    }
+    this.state = {
+      newTodoTitle: "",
+      newDescription: "",
+      allTodos: [],
+      viewMode: "todo",
+      editTask: { id: null, text: "" },
+      TaskText: "",
+      isEditing: false,
+      date: date,
+    };
   }
 
-  return (
-    <div className="App">
-      <h1>My Todos</h1>
+  addNewTask = () => {
+    const { newTodoTitle, newDescription, allTodos, date } = this.state;
 
-      <div className="todo-wrapper">
-        <div className="todo-input"> 
-        
-        <Input
-          title={title}
-          description={description}
-          onTitleChange={setTitle}
-          onDescriptionChange={setDescription}
-        />
+    if (newTodoTitle.trim() !== "") {
+      const newTask = {
+        title: newTodoTitle,
+        description: newDescription,
+        id: date.getMilliseconds(),
+      };
 
-        <Button addtask={addTask} />
+      this.setState((prevState) => ({
+        allTodos: [...prevState.allTodos, newTask],
+        newTodoTitle: "",
+        newDescription: "",
+      }));
+    }
+  };
 
-        </div>
+  deleteTask = (id) => {
+    this.setState((prevState) => ({
+      allTodos: prevState.allTodos.filter((item) => item.id !== id),
+    }));
+  };
 
-        <Switcher />
-        <div className="todo-list">
+  clearAllTasks = () => {
+    this.setState({ allTodos: [] });
+  };
 
-        {Todos.map((todo, index) => (
-          <Todoitem key={index} title={todo.title} description={todo.description} />
-        ))}
+  switchToTodo = () => {
+    this.setState({ viewMode: "todo" });
+  };
 
+  switchToCompleted = () => {
+    this.setState({ viewMode: "completed" });
+  };
+
+  taskCompleted = (taskId) => {
+    this.setState((prevState) => ({
+      allTodos: prevState.allTodos.map((task) =>
+        task.id === taskId
+          ? { ...task, completed: !task.completed }
+          : task
+      ),
+    }));
+  };
+
+  toggleEdit = (taskId, taskText) => {
+    this.setState((prevState) => ({
+      allTodos: prevState.allTodos.map((task) =>
+        task.id === taskId
+          ? { ...task, isEditing: !task.isEditing }
+          : task
+      ),
+      editTask: prevState.editTask.id === taskId ? { id: null, text: "" } : { id: taskId, text: taskText },
+      TaskText: taskText,
+    }));
+  };
+
+  saveChange = (taskId) => {
+    this.setState((prevState) => ({
+      allTodos: prevState.allTodos.map((task) =>
+        task.id === taskId
+          ? { ...task, title: prevState.TaskText, isEditing: false }
+          : task
+      ),
+      TaskText: "",
+      editTask: { id: null, text: "" },
+    }));
+  };
+
+  render() {
+    const {
+      newTodoTitle,
+      newDescription,
+      allTodos,
+      viewMode,
+      editTask,
+    } = this.state;
+
+    const todoTasks = allTodos.filter((task) => !task.completed);
+    const completedTasks = allTodos.filter((task) => task.completed);
+
+    return (
+      <div className="App">
+        <h1>My Todos</h1>
+
+        <div className="todo-wrapper">
+          <div className="todo-input">
+            <Input
+              valueTitle={newTodoTitle}
+              valueDescription={newDescription}
+              onTitleChange={(value) =>
+                this.setState({ newTodoTitle: value })
+              }
+              onDescriptionChange={(value) =>
+                this.setState({ newDescription: value })
+              }
+            />
+
+            <Button onclick={this.addNewTask} />
+          </div>
+
+          <div className="clear-wrapper">
+            <Clear clear={this.clearAllTasks} />
+
+            <Switcher
+              switchToTodo={this.switchToTodo}
+              switchToCompleted={this.switchToCompleted}
+              viewMode={viewMode}
+            />
+          </div>
+
+          <div className="todo-list">
+            {viewMode === "todo" ? (
+              todoTasks.map((item, index) => (
+                <Todoitem
+                  todoTitle={item.title}
+                  todoDescription={item.description}
+                  deleteTask={this.deleteTask}
+                  id={item.id}
+                  taskCompleted={this.taskCompleted}
+                  completed={item.completed}
+                  toggleEdit={() => this.toggleEdit(item.id, item.title)}
+                  TaskText={
+                    item.id === editTask.id ? editTask.text : ""
+                  }
+                  setTaskText={(value) => this.setState({ TaskText: value })}
+                  saveChange={() => this.saveChange(item.id)}
+                  editTask={item.id === editTask.id}
+                  isEditing={editTask.id === item.id}
+                />
+              ))
+            ) : (
+              completedTasks.map((item, index) => (
+                <Todoitem
+                  todoTitle={item.title}
+                  todoDescription={item.description}
+                  deleteTask={this.deleteTask}
+                  id={item.id}
+                  taskCompleted={this.taskCompleted}
+                  completed={item.completed}
+                  toggleEdit={() => this.toggleEdit(item.id, item.title)}
+                  TaskText={
+                    item.id === editTask.id ? editTask.text : ""
+                  }
+                  setTaskText={(value) => this.setState({ TaskText: value })}
+                  saveChange={() => this.saveChange(item.id)}
+                  editTask={item.id === editTask.id}
+                  isEditing={editTask.id === item.id}
+                />
+              ))
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
 }
 
 export default App;
